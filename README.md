@@ -44,9 +44,9 @@ The server listens on `0.0.0.0` and honors the hosting provider's `PORT`. Config
 
 ## Deploy to Vercel
 
-1. Import this repository into Vercel and keep the project root at the repository root. `vercel.json` configures the frontend build and SPA route rewrites.
+1. Import this repository into Vercel and keep the project root at the repository root. `vercel.json` configures the frontend build and SPA route rewrites; `api/[...path].ts` exposes the Express OTP endpoints as a Vercel Function.
 2. Add either `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` or the SMTP settings below under **Project Settings → Environment Variables** for Production (and Preview if needed). For Mailtrap Email Sandbox, use `SMTP_HOST=sandbox.smtp.mailtrap.io`, `SMTP_PORT=2525`, your Mailtrap sandbox username and password, and a sender such as `PoojaConnect <from@example.com>`.
-3. Deploy. Vercel serves the Vite output as static assets and runs the exported Express app for API requests. Google sign-in also requires enabling Google in Firebase Authentication and adding the Vercel domain to Firebase's authorized domains.
+3. Deploy. Vercel serves the Vite output as static assets and routes OTP API requests through the Express app. Google sign-in also requires enabling Google in Firebase Authentication and adding the Vercel domain to Firebase's authorized domains.
 
 For a different Firebase web app, configure the `VITE_FIREBASE_*` variables as Vercel build environment variables and redeploy. Vite embeds these values into the built frontend.
 

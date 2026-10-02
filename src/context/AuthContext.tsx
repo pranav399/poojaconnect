@@ -1,6 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { firebaseClient, type Profile, type Role, type PanditProfile } from '../lib/firebase';
 
+async function readApiResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    await response.text();
+    throw new Error(`OTP API returned a non-JSON response (${response.status}). Check the deployment's API function routing.`);
+  }
+  return response.json() as Promise<T>;
+}
+
 export interface UserSession {
   user: {
     id: string;
@@ -110,7 +119,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
+      const data = await readApiResponse<{
+        success: boolean;
+        message?: string;
+        deliveryMethod?: string;
+        simulated?: boolean;
+        simulatedOtp?: string;
+      }>(res);
       if (!res.ok || !data.success) {
         return { success: false, message: data.message || 'Failed to send OTP email.' };
       }
@@ -133,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp }),
       });
-      const data = await res.json();
+      const data = await readApiResponse<{ success: boolean; message?: string }>(res);
       if (!res.ok || !data.success) {
         return { success: false, message: data.message || 'OTP verification failed.' };
       }
