@@ -36,6 +36,7 @@ const nav: NavItem[] = [
   { to: '/app/admin-users', label: 'Users', icon: Users, roles: ['admin'] },
   { to: '/app/admin-pandits', label: 'Verify Pandits', icon: ShieldCheck, roles: ['admin'] },
   { to: '/app/admin-services', label: 'Services', icon: CalendarHeart, roles: ['admin'] },
+  { to: '/app/admin-products', label: 'Samagri Shop', icon: ShoppingBag, roles: ['admin'] },
   { to: '/app/admin-orders', label: 'Transactions', icon: Store, roles: ['admin'] },
   { to: '/app/profile', label: 'My Profile', icon: User, roles: ['devotee', 'admin'] },
 ];

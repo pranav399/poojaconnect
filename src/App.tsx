@@ -20,6 +20,7 @@ import { PanditProfilePage } from './pages/PanditProfilePage';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminPanditsPage } from './pages/AdminPanditsPage';
 import { AdminServicesPage } from './pages/AdminServicesPage';
+import { AdminProductsPage } from './pages/AdminProductsPage';
 import { AdminOrdersPage } from './pages/AdminOrdersPage';
 import { ProfilePage } from './pages/ProfilePage';
 
@@ -62,6 +63,7 @@ export default function App() {
                 <Route path="admin-users" element={<ProtectedRoute roles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
                 <Route path="admin-pandits" element={<ProtectedRoute roles={['admin']}><AdminPanditsPage /></ProtectedRoute>} />
                 <Route path="admin-services" element={<ProtectedRoute roles={['admin']}><AdminServicesPage /></ProtectedRoute>} />
+                <Route path="admin-products" element={<ProtectedRoute roles={['admin']}><AdminProductsPage /></ProtectedRoute>} />
                 <Route path="admin-orders" element={<ProtectedRoute roles={['admin']}><AdminOrdersPage /></ProtectedRoute>} />
               </Route>
               <Route path="*" element={<Navigate to="/app" replace />} />
