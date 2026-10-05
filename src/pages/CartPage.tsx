@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Trash2, Loader2, ShoppingBag, ArrowRight, Minus, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { firebaseClient, type CartItem } from '../lib/firebase';
+import { getSharedProducts } from '../lib/productCatalog';
 import { formatINR } from '../lib/utils';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SkeletonCard } from '../components/ui/Skeleton';
@@ -21,13 +22,27 @@ export function CartPage() {
   const load = async () => {
     if (!profile) return;
     setLoading(true);
-    const { data } = await firebaseClient
-      .from('cart_items')
-      .select('*, product:products(*)')
-      .eq('user_id', profile.id)
-      .order('created_at', { ascending: false });
-    setItems((data as CartItem[]) ?? []);
-    setLoading(false);
+    try {
+      const [{ data }, products] = await Promise.all([
+        firebaseClient
+          .from('cart_items')
+          .select('*, product:products(*)')
+          .eq('user_id', profile.id)
+          .order('created_at', { ascending: false }),
+        getSharedProducts(),
+      ]);
+      const productById = new Map(products.map((product) => [product.id, product]));
+      setItems(((data as CartItem[]) ?? []).map((item) => ({
+        ...item,
+        product: productById.get(item.product_id) ?? item.product,
+      })));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not load your cart.';
+      toastError('Could not load your cart', message);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, [profile]);

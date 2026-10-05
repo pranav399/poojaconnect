@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { CheckCircle2, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -51,13 +51,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [remove]
   );
 
-  const api: ToastCtx = {
-    toast,
-    success: (title, description) => toast({ type: 'success', title, description }),
-    error: (title, description) => toast({ type: 'error', title, description }),
-    info: (title, description) => toast({ type: 'info', title, description }),
-    warning: (title, description) => toast({ type: 'warning', title, description }),
-  };
+  const success = useCallback((title: string, description?: string) => toast({ type: 'success', title, description }), [toast]);
+  const error = useCallback((title: string, description?: string) => toast({ type: 'error', title, description }), [toast]);
+  const info = useCallback((title: string, description?: string) => toast({ type: 'info', title, description }), [toast]);
+  const warning = useCallback((title: string, description?: string) => toast({ type: 'warning', title, description }), [toast]);
+  const api = useMemo<ToastCtx>(() => ({ toast, success, error, info, warning }), [toast, success, error, info, warning]);
 
   return (
     <Ctx.Provider value={api}>

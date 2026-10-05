@@ -54,12 +54,24 @@ For a different Firebase web app, configure the `VITE_FIREBASE_*` variables as V
 
 In the Firebase project used by the app, enable **Google** under **Authentication → Sign-in method** and add the deployed hostname under **Authentication → Settings → Authorized domains**. Also add local `localhost` for development.
 
+## Shared Samagri catalog and image uploads
+
+The Samagri shop catalog is stored in Firestore, and uploaded product images are stored in Firebase Storage. Deploy the included rules from an authenticated Firebase CLI session:
+
+```sh
+npx firebase-tools deploy --only firestore:rules,storage
+```
+
+Enable Firestore and Storage in the `poojaconnect-9935f` Firebase project first if either service is not already enabled. For each administrator, have them sign in once with Google, then use **Firebase Console → Firestore Database → profiles** to set that signed-in user's profile document `role` to `admin`. The document ID must be the user's Firebase Authentication UID. Admins must use Google sign-in for catalog edits and image uploads; email/password and OTP sessions are local demo accounts and cannot write shared catalog data.
+
+On the first admin visit to the shared catalog, if Firestore has no products yet, the app imports that browser's existing local product catalog (including image URLs) or the default products. Later edits are shared across visitors. Product image uploads are limited to 5 MB.
+
 ## Email OTP
 
 OTP email is handled by the Node server, not Firebase Authentication. Configure SendGrid with `SENDGRID_API_KEY` and a verified `SENDGRID_FROM_EMAIL`, or configure SMTP with `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM_EMAIL`. SendGrid is tried after SMTP if both are fully configured. The `.env.example` defaults to Mailtrap Email Sandbox for local testing; sandbox messages are captured in Mailtrap and are not delivered to real recipients. Use a production email provider for real user delivery.
 
 ## Deployment scope and production limitations
 
-This repository currently runs its application database and non-Google user accounts in browser `localStorage`. OTP records are stored in server memory. Consequently, this Vercel deployment is suitable for a preview/demo, not a production service with reliable shared user data: browser data is isolated per device, and serverless function instances do not guarantee shared OTP state. Production use requires migrating application data and accounts to a persistent backend (for example Firestore with server-enforced authorization) and storing OTP records in a shared datastore with rate limiting.
+This repository still runs most application data and non-Google user accounts in browser `localStorage`. The Samagri product catalog is shared through Firestore and Firebase Storage when their rules are deployed and administrators use Google sign-in. OTP records are stored in server memory. Consequently, this Vercel deployment is suitable for a preview/demo, not a production service with reliable shared user data: browser data is isolated per device, and serverless function instances do not guarantee shared OTP state. Production use requires migrating the remaining application data and accounts to persistent services and storing OTP records in a shared datastore with rate limiting.
 
-The current app's business data adapter does not use Firestore. Review and configure Firebase Authentication and database security rules for the actual data model before storing production user or business data in Firebase.
+Other business data still uses the local demo adapter. Review and configure Firebase Authentication and security rules for that data model before storing production user or business data in Firebase.

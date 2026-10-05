@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search, ShoppingCart, Loader2, Sparkles, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { firebaseClient, type Product } from '../lib/firebase';
+import { getSharedProducts } from '../lib/productCatalog';
 import { formatINR, cn } from '../lib/utils';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SkeletonCard } from '../components/ui/Skeleton';
@@ -24,21 +25,10 @@ export function ShopPage() {
       setProducts([]);
 
       try {
-        const { data, error } = await firebaseClient
-          .from('products')
-          .select('*')
-          .eq('is_active', true)
-          .order('name', { ascending: true });
+        const data = await getSharedProducts();
 
         if (!active) return;
-
-        if (error) {
-          console.error('products load error', error);
-          toastError('Could not load products', error.message || 'Please try again in a moment.');
-          setProducts([]);
-        } else {
-          setProducts((data as Product[]) ?? []);
-        }
+        setProducts(data.filter((product) => product.is_active));
       } catch (err) {
         if (!active) return;
         const message = err instanceof Error ? err.message : 'Unknown error';

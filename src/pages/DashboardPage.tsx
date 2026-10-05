@@ -12,13 +12,16 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { firebaseClient, type Booking, type Service, type Product } from '../lib/firebase';
+import { getSharedProducts } from '../lib/productCatalog';
 import { formatINR, formatDateTime } from '../lib/utils';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatusBadge } from '../components/ui/Badge';
 import { SkeletonCard } from '../components/ui/Skeleton';
+import { useToast } from '../context/ToastContext';
 
 export function DashboardPage() {
   const { profile } = useAuth();
+  const { error: toastError } = useToast();
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -54,11 +57,17 @@ export function DashboardPage() {
       }
       const { data: svcs } = await firebaseClient.from('services').select('*').eq('is_active', true).limit(4);
       setServices((svcs as Service[]) ?? []);
-      const { data: prods } = await firebaseClient.from('products').select('*').eq('is_active', true).limit(4);
-      setProducts((prods as Product[]) ?? []);
+      try {
+        const prods = await getSharedProducts();
+        setProducts(prods.filter((product) => product.is_active).slice(0, 4));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Could not load featured samagri.';
+        toastError('Could not load products', message);
+        setProducts([]);
+      }
       setLoading(false);
     })();
-  }, [profile]);
+  }, [profile, toastError]);
 
   if (!profile) return null;
 

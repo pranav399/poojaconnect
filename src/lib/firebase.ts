@@ -18,7 +18,7 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseAppletConfig.messagingSenderId,
   appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseAppletConfig.appId,
 };
-const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+export const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const googleAuth = getAuth(firebaseApp);
 
 export const SEED_SERVICES: Service[] = [
@@ -635,16 +635,27 @@ export const firebaseClient = {
       try {
         const credential = await signInWithPopup(googleAuth, new GoogleAuthProvider());
         const user = credential.user;
-        const { data: existingProfile } = await firebaseClient
-          .from('profiles')
-          .select('*')
-          .eq('id', user.uid)
-          .maybeSingle();
-        const { error } = await firebaseClient.from('profiles').upsert({
+        const firestore = await import('firebase/firestore');
+        const database = firestore.getFirestore(firebaseApp);
+        const cloudProfileRef = firestore.doc(database, 'profiles', user.uid);
+        const cloudProfileSnapshot = await firestore.getDoc(cloudProfileRef);
+        const cloudProfile = cloudProfileSnapshot.data();
+        const role: Role = cloudProfile?.role === 'admin' || cloudProfile?.role === 'pandit'
+          ? cloudProfile.role
+          : cloudProfile?.role === 'devotee'
+            ? 'devotee'
+            : preferredRole;
+        const profile = {
           id: user.uid,
           email: user.email ?? '',
           full_name: user.displayName ?? user.email?.split('@')[0] ?? 'Google User',
-          role: existingProfile?.role ?? preferredRole,
+          role,
+          created_at: cloudProfile?.created_at ?? new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        await firestore.setDoc(cloudProfileRef, profile, { merge: true });
+        const { error } = await firebaseClient.from('profiles').upsert({
+          ...profile,
         });
         if (error) {
           await firebaseSignOut(googleAuth);

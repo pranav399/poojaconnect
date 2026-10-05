@@ -10,11 +10,18 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == "admin";
+    }
+
     // Profiles Collection
     match /profiles/{profileId} {
       allow read: if true;
-      allow create: if isSignedIn() || request.auth.uid == profileId;
-      allow update: if isOwner(profileId) || isOwner(resource.data.id);
+      allow create: if isOwner(profileId)
+        && request.resource.data.role in ["devotee", "pandit"];
+      allow update: if isOwner(profileId)
+        && request.resource.data.role == resource.data.role;
       allow delete: if false;
     }
 
@@ -43,7 +50,7 @@ service cloud.firestore {
     // Products Catalog
     match /products/{productId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // Orders

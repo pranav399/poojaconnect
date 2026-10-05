@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Package, Pencil, Plus, Save, ShoppingBag, Trash2, X } from 'lucide-react';
-import { firebaseClient, type Product } from '../lib/firebase';
+import type { Product } from '../lib/firebase';
+import { deleteSharedProduct, initializeSharedCatalogFromLegacyBrowser, saveSharedProduct } from '../lib/productCatalog';
 import { formatINR } from '../lib/utils';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Badge } from '../components/ui/Badge';
@@ -20,25 +21,28 @@ const emptyForm = {
 };
 
 export function AdminProductsPage() {
-  const { success, error: toastError } = useToast();
+  const { success, error: toastError, warning } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Product | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [form, setForm] = useState(emptyForm);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await firebaseClient.from('products').select('*').order('name');
-    if (error) {
-      toastError('Could not load samagri products', error.message);
+    try {
+      const data = await initializeSharedCatalogFromLegacyBrowser();
+      setProducts(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not load the shared product catalog.';
+      toastError('Could not load samagri products', message);
       setProducts([]);
-    } else {
-      setProducts((data as Product[]) ?? []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
@@ -46,6 +50,7 @@ export function AdminProductsPage() {
   const openNew = () => {
     setEditing(null);
     setForm({ ...emptyForm });
+    setImageFile(null);
     setShowModal(true);
   };
 
@@ -60,6 +65,7 @@ export function AdminProductsPage() {
       image_url: product.image_url ?? '',
       is_active: product.is_active,
     });
+    setImageFile(null);
     setShowModal(true);
   };
 
@@ -85,14 +91,15 @@ export function AdminProductsPage() {
       is_active: form.is_active,
       updated_at: new Date().toISOString(),
     };
-    const result = editing
-      ? await firebaseClient.from('products').update(payload).eq('id', editing.id)
-      : await firebaseClient.from('products').insert(payload);
-    setSaving(false);
-
-    if (result.error) {
-      toastError('Save failed', result.error.message);
+    try {
+      const result = await saveSharedProduct(editing, payload, imageFile ?? undefined);
+      if (result.cleanupWarning) warning('Image cleanup warning', result.cleanupWarning);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not save the product.';
+      toastError('Save failed', message);
       return;
+    } finally {
+      setSaving(false);
     }
     setShowModal(false);
     success(editing ? 'Product updated' : 'Product created', `${payload.name} has been saved.`);
@@ -100,11 +107,15 @@ export function AdminProductsPage() {
   };
 
   const remove = async () => {
-    if (!deleteId) return;
-    const { error } = await firebaseClient.from('products').delete().eq('id', deleteId);
+    const product = products.find((item) => item.id === deleteId);
     setDeleteId(null);
-    if (error) {
-      toastError('Delete failed', error.message);
+    if (!product) return;
+    try {
+      const result = await deleteSharedProduct(product);
+      if (result.cleanupWarning) warning('Image cleanup warning', result.cleanupWarning);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not delete the product.';
+      toastError('Delete failed', message);
       return;
     }
     success('Product deleted', 'The product has been removed from the shop.');
@@ -206,6 +217,19 @@ export function AdminProductsPage() {
           <div>
             <label className="label">Image URL</label>
             <input type="url" value={form.image_url} onChange={(event) => setForm({ ...form, image_url: event.target.value })} className="input" />
+          </div>
+          <div>
+            <label className="label">Upload image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
+              className="input"
+            />
+            <p className="mt-1 text-xs text-saffron-500 dark:text-slate-400">
+              Upload an image up to 5 MB. A selected upload replaces the image URL above.
+              {imageFile ? ` Selected: ${imageFile.name}` : ''}
+            </p>
           </div>
           <label className="flex items-center gap-2 text-sm text-saffron-700 dark:text-slate-300">
             <input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} />
